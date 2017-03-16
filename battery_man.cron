@@ -1,0 +1,39 @@
+#!/bin/bash
+
+battery_max=$(cat /sys/class/power_supply/battery/voltage_max_design)
+battery_min=$(( 6 * $(cat /sys/class/power_supply/battery/voltage_min_design) ))
+battery_now=$(cat /sys/class/power_supply/battery/voltage_now)
+ac_power=$(cat /sys/class/power_supply/ac/present)
+usb_power=$(cat /sys/class/power_supply/usb/present)
+shore_power=''
+
+fn_write_event () {
+
+  [ "$verbose" == y ] && echo "$@"
+  [ "$verbose" == n ] && logger "$(basename $0 | sed 's/.cron//') $@"
+
+}
+
+if [[ "$1" =~ v|V ]] ; then
+  verbose=y
+else
+  verbose=n
+fi
+
+ac_power=$(cat /sys/class/power_supply/ac/present)
+usb_power=$(cat /sys/class/power_supply/usb/present)
+
+if [ "$ac_power" -eq 0 ] && [ "$usb_power" -eq 0 ] ; then
+  shore_power="off shore power"
+fi
+
+
+fn_write_event "current/max/min $battery_now/$battery_min/$battery_max $shore_power"
+
+if [ "$battery_now" -le "$battery_min" ] ; then
+  fn_write_event "shutting down..."
+  shutdown now -h
+elif [ "$battery_now" -ge "$battery_max" ] ; then
+  fn_write_event "shutting down..."
+  shutdown now -h
+fi
